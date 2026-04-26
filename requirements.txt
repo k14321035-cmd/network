@@ -1,0 +1,408 @@
+# 🚀 Complete Setup Guide: Privacy Tunnel
+
+## 1. Running Locally
+
+### Start the Backend Server
+
+```powershell
+cd F:\en
+
+# Use default port 8443 (if available)
+py proxy_server.py
+
+# Or specify a custom port if 8443 is in use
+$env:PROXY_SERVER_PORT='8444'
+py proxy_server.py
+```
+
+The server will start and show:
+```
+2026-04-26 22:13:38,021 - INFO - Starting server on 0.0.0.0:8444
+```
+
+### Test the HTTP Tunnel
+
+```powershell
+cd F:\en
+
+# Use matching port
+$env:PROXY_SERVER_URL='http://127.0.0.1:8444/api/analytics/track'
+py proxy_client.py
+```
+
+Expected output:
+```
+← 200 http://127.0.0.1:8444/health
+Headers: {...}
+Body: b'{"status":"ok","message":"local target reachable"}'
+```
+
+### Test the WebSocket Persistent Tunnel
+
+```powershell
+cd F:\en
+
+# Use matching port
+$env:PROXY_SERVER_WS_URL='ws://127.0.0.1:8444/ws/analytics'
+py websocket_test.py
+```
+
+Expected output:
+```
+WebSocket connected
+Auth response: {'status': 'connected', 'session_id': '...'}
+WebSocket tunnel established!
+Request response: {'success': True, 'event_id': '...', 'response': '...'}
+Decrypted response: Status 200
+Body: {"status":"ok","message":"local target reachable"}
+WebSocket test completed successfully!
+```
+
+## 2. Mobile App with Capacitor
+
+### Prerequisites
+
+```bash
+# Install Node.js and npm
+# Install Capacitor CLI globally
+npm install -g @capacitor/cli @capacitor/core
+
+# Install React Native CLI (if not already installed)
+npm install -g @react-native-community/cli
+```
+
+### Create React Native App with Capacitor
+
+```bash
+# Create new React Native app
+npx react-native init PrivacyTunnelMobile --template react-native-template-typescript
+
+cd PrivacyTunnelMobile
+
+# Install Capacitor
+npm install @capacitor/android @capacitor/ios
+
+# Initialize Capacitor
+npx cap init "Privacy Tunnel" "com.privacytunnel.mobile"
+
+# Copy our mobile client files
+cp ../mobile_client_ws.js src/PrivacyTunnel.js
+cp ../ReactNativeApp.js src/App.tsx
+```
+
+### Update package.json
+
+```json
+{
+  "name": "PrivacyTunnelMobile",
+  "version": "1.0.0",
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "build": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res",
+    "cap:android": "cap sync android && cap open android",
+    "cap:ios": "cap sync ios && cap open ios",
+    "cap:sync": "cap sync"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.72.0",
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/ios": "^5.0.0",
+    "@capacitor/core": "^5.0.0",
+    "crypto-js": "^4.1.1"
+  }
+}
+```
+
+### Configure Capacitor Platforms
+
+```bash
+# Add Android platform
+npx cap add android
+
+# Add iOS platform (macOS only)
+npx cap add ios
+
+# Sync dependencies
+npx cap sync
+```
+
+### Update App.tsx
+
+```typescript
+import React, {useState} from 'react';
+import {View, Text, TextInput, Button, StyleSheet} from 'react-native';
+import PrivacyTunnel from './PrivacyTunnel';
+
+const App = () => {
+  const [serverUrl, setServerUrl] = useState('ws://10.0.2.2:8444/ws/analytics'); // Android emulator
+  const [deviceId, setDeviceId] = useState('device_001');
+  const [apiKey, setApiKey] = useState('your-secret-key-1');
+  const [result, setResult] = useState('');
+
+  const testTunnel = async () => {
+    try {
+      const tunnel = new PrivacyTunnel(deviceId, apiKey, serverUrl, true);
+      await tunnel.connectWebSocket();
+      const response = await tunnel.get('http://10.0.2.2:8444/health');
+      setResult(JSON.stringify(response, null, 2));
+      tunnel.disconnectWebSocket();
+    } catch (error) {
+      setResult(`Error: ${error.message}`);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Privacy Tunnel Mobile</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="WebSocket Server URL"
+        value={serverUrl}
+        onChangeText={setServerUrl}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Device ID"
+        value={deviceId}
+        onChangeText={setDeviceId}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="API Key"
+        value={apiKey}
+        onChangeText={setApiKey}
+        secureTextEntry
+      />
+
+      <Button title="Test Tunnel" onPress={testTunnel} />
+
+      <Text style={styles.result}>{result}</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+    backgroundColor: 'white',
+  },
+  result: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 5,
+    fontFamily: 'monospace',
+  },
+});
+
+export default App;
+```
+
+### Build and Run
+
+#### Android
+
+```bash
+# Build React Native bundle
+npm run build
+
+# Sync with Capacitor
+npm run cap:sync
+
+# Open in Android Studio
+npm run cap:android
+```
+
+#### iOS (macOS only)
+
+```bash
+# Build React Native bundle
+npm run build
+
+# Sync with Capacitor
+npm run cap:sync
+
+# Open in Xcode
+npm run cap:ios
+```
+
+### Network Configuration for Mobile Testing
+
+When testing on device/emulator, update the server URL:
+
+- **Android Emulator**: `ws://10.0.2.2:8444/ws/analytics` (10.0.2.2 = host machine)
+- **iOS Simulator**: `ws://127.0.0.1:8444/ws/analytics`
+- **Physical Device**: Use your computer's IP address: `ws://192.168.1.100:8444/ws/analytics`
+
+## 3. Hosting on Azure
+
+### Quick Deploy (Container Apps)
+
+```bash
+# Set variables
+RESOURCE_GROUP="privacy-tunnel-rg"
+LOCATION="eastus"
+CONTAINER_APP_NAME="privacy-tunnel-api"
+
+# Create resource group
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Create Container Apps environment
+az containerapp env create --name privacy-tunnel-env --resource-group $RESOURCE_GROUP --location $LOCATION
+
+# Deploy directly from source (no Docker needed)
+az containerapp create \
+  --name $CONTAINER_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --environment privacy-tunnel-env \
+  --source . \
+  --target-port 8443 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 10
+
+# Get the deployed URL
+CONTAINER_APP_URL=$(az containerapp show -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv)
+echo "Deployed at: https://$CONTAINER_APP_URL"
+```
+
+### Full Production Setup
+
+For production with database and monitoring, see [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md)
+
+### Environment Variables for Production
+
+```bash
+# Set production environment variables
+az containerapp update \
+  --name $CONTAINER_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --set-env-vars \
+    PROXY_SERVER_HOST="0.0.0.0" \
+    PROXY_SERVER_PORT="8443"
+```
+
+### Update Mobile App for Production
+
+```javascript
+// In your mobile app, change the server URL to production
+const PRODUCTION_URL = 'wss://your-container-app.azurecontainerapps.io/ws/analytics';
+const tunnel = new PrivacyTunnel('device_001', 'your-key', PRODUCTION_URL, true);
+```
+
+## 4. Alternative Hosting Options
+
+### Docker + Any Cloud
+
+```bash
+# Build Docker image
+docker build -t privacy-tunnel .
+
+# Run locally
+docker run -p 8443:8443 privacy-tunnel
+
+# Deploy to any container service (AWS ECS, Google Cloud Run, etc.)
+```
+
+### Heroku
+
+```bash
+# Create Heroku app
+heroku create privacy-tunnel-api
+
+# Deploy
+git push heroku main
+
+# Set environment variables
+heroku config:set PROXY_SERVER_PORT=8443
+```
+
+### DigitalOcean App Platform
+
+Upload the code to GitHub, then deploy via DigitalOcean dashboard with:
+- Build command: `pip install -r requirements.txt`
+- Run command: `uvicorn proxy_server:app --host 0.0.0.0 --port $PORT`
+
+## 5. Security Considerations
+
+### For Production Deployment
+
+1. **HTTPS Only**: Always use HTTPS/WSS in production
+2. **API Key Management**: Use Azure Key Vault or similar for secrets
+3. **Rate Limiting**: Configure appropriate limits per device
+4. **Monitoring**: Enable Application Insights or similar
+5. **Firewall**: Restrict access to known mobile app IPs if possible
+
+### Mobile App Security
+
+1. **Certificate Pinning**: Pin the server certificate in the mobile app
+2. **Key Storage**: Use secure key storage (Keychain/iOS, Keystore/Android)
+3. **Code Obfuscation**: Enable ProGuard/R8 for Android, code obfuscation for iOS
+
+## 6. Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+```powershell
+# Find what's using the port
+netstat -ano | findstr :8443
+
+# Kill the process
+taskkill /PID <PID> /F
+
+# Or use a different port
+$env:PROXY_SERVER_PORT='8445'
+```
+
+**Mobile app can't connect:**
+- Check firewall settings
+- Use correct IP address for your network
+- Ensure server is running and accessible
+
+**WebSocket connection fails:**
+- Verify the WebSocket URL format (`ws://` for HTTP, `wss://` for HTTPS)
+- Check server logs for authentication errors
+
+**Build issues with Capacitor:**
+```bash
+# Clean and rebuild
+npx cap clean
+npm run cap:sync
+```
+
+## Python dependencies for Privacy Tunnel Server
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+httpx>=0.25.0
+cryptography>=41.0.0
+python-multipart>=0.0.6
+websockets>=12.0
+
+# Optional for production
+# azure-cosmos>=4.5.0      # Azure Cosmos DB support
+# azure-identity>=1.15.0   # Azure managed identity
+# opencensus-ext-azure>=1.1.0  # Azure Application Insights
+# slowapi>=0.1.9           # Rate limiting
