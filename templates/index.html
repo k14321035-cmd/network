@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Geolocation Tracker - Track Any IP Address</title>
+    <meta name="description" content="Find the geographical location of any IP address with detailed information including ISP, timezone, and more.">
+    
+    <!-- Leaflet Map Library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.Default.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/leaflet.markercluster.min.js"></script>
+    
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">🌍 IP Tracker</div>
+            <div class="nav-links">
+                <a href="#" onclick="showMyIP()">My IP</a>
+                <a href="#" onclick="showBatchLookup()">Batch</a>
+                <a href="#" onclick="showHelp()">Help</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>IP Geolocation Tracker</h1>
+            <p>Discover the geographical location and details of any IP address</p>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="ipInput" 
+                    class="ip-input" 
+                    placeholder="Enter IP address (e.g., 8.8.8.8)"
+                    autocomplete="off"
+                >
+                <button class="btn-search" onclick="lookupIP()">Search</button>
+                <button class="btn-my-ip" onclick="showMyIP()">My IP</button>
+            </div>
+            <div id="errorMessage" class="error-message"></div>
+        </section>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('map')">🗺️ Map View</button>
+            <button class="tab-btn" onclick="switchTab('info')">📊 Details</button>
+            <button class="tab-btn" onclick="switchTab('history')">📜 History</button>
+        </div>
+
+        <!-- Map Tab -->
+        <div id="mapTab" class="tab-content active">
+            <div id="map" class="map-container"></div>
+        </div>
+
+        <!-- Info Tab -->
+        <div id="infoTab" class="tab-content">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-label">IP Address</div>
+                    <div class="info-value" id="displayIP">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Hostname</div>
+                    <div class="info-value" id="displayHostname">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Country</div>
+                    <div class="info-value" id="displayCountry">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Country Code</div>
+                    <div class="info-value" id="displayCountryCode">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">City</div>
+                    <div class="info-value" id="displayCity">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Region</div>
+                    <div class="info-value" id="displayRegion">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Latitude</div>
+                    <div class="info-value" id="displayLat">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Longitude</div>
+                    <div class="info-value" id="displayLon">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Timezone</div>
+                    <div class="info-value" id="displayTimezone">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">ISP</div>
+                    <div class="info-value" id="displayISP">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">IP Type</div>
+                    <div class="info-value" id="displayType">-</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Last Updated</div>
+                    <div class="info-value" id="displayTimestamp">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="tab-content">
+            <div class="history-container">
+                <button class="btn-clear-history" onclick="clearHistory()">Clear History</button>
+                <div id="historyList" class="history-list"></div>
+            </div>
+        </div>
+
+        <!-- Batch Lookup Section -->
+        <section id="batchSection" class="batch-section" style="display: none;">
+            <h2>Batch IP Lookup</h2>
+            <p>Enter up to 10 IP addresses (one per line)</p>
+            <textarea id="batchInput" class="batch-input" placeholder="8.8.8.8&#10;1.1.1.1&#10;208.67.222.123"></textarea>
+            <button class="btn-batch" onclick="executeBatchLookup()">Lookup Batch</button>
+            <div id="batchResults" class="batch-results"></div>
+        </section>
+
+        <!-- Help Section -->
+        <section id="helpSection" class="help-section" style="display: none;">
+            <h2>How to Use IP Geolocation Tracker</h2>
+            <div class="help-content">
+                <div class="help-item">
+                    <h3>🔍 Single IP Lookup</h3>
+                    <p>Enter any IPv4 address in the search box and click "Search" to get detailed geolocation information.</p>
+                </div>
+                <div class="help-item">
+                    <h3>📍 My IP Address</h3>
+                    <p>Click "My IP" to instantly track your own IP address and see your location on the map.</p>
+                </div>
+                <div class="help-item">
+                    <h3>🗺️ Interactive Map</h3>
+                    <p>The map view displays the IP location. You can zoom, pan, and interact with the map to explore.</p>
+                </div>
+                <div class="help-item">
+                    <h3>📊 Detailed Information</h3>
+                    <p>Switch to the "Details" tab to see comprehensive information about the IP address including ISP, timezone, and coordinates.</p>
+                </div>
+                <div class="help-item">
+                    <h3>📜 Search History</h3>
+                    <p>All your IP lookups are saved in the History tab. Click any entry to re-view its details.</p>
+                </div>
+                <div class="help-item">
+                    <h3>⚙️ Batch Lookup</h3>
+                    <p>Look up multiple IP addresses at once by entering them in the Batch section.</p>
+                </div>
+                <div class="help-item">
+                    <h3>🔒 Privacy</h3>
+                    <p>This is an educational tool for ethical hacking and network security learning. Always use responsibly.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 IP Geolocation Tracker | Educational Tool for Network Security</p>
+    </footer>
+
+    <script src="static/app.js"></script>
+</body>
+</html>
